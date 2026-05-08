@@ -8,7 +8,7 @@
     "lint": "eslint . --ext .ts --fix",
     "mocha": "ts-mocha test/**/*.ts --timeout 15000",
     "codegen": "envio codegen",
-    "dev": "eval \"$(scripts/select_rpc.sh)\" && LOG_LEVEL=trace LOG_STRATEGY=console-pretty TUI_OFF=true envio dev",
+    "dev": "(cd generated && pnpm build) && eval \"$(scripts/select_rpc.sh)\" && LOG_LEVEL=trace LOG_STRATEGY=console-pretty TUI_OFF=true envio dev",
     "start": "envio start",
     "test": "pnpm mocha",
     "db-up": "cd generated && pnpm db-up && cd -",
