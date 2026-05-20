@@ -112,6 +112,24 @@ export function normalizeAmount(value: bigint, fromDecimals: number, toDecimals:
   return value * 10n ** BigInt(toDecimals - fromDecimals)
 }
 
+/**
+ * Reserve-currency value of a token bag at 18-decimal precision.
+ *
+ * `supplyRaw` is in issuance-token decimals; `priceRaw` is "reserve units per
+ * issuance unit" expressed at reserve-token decimals (matches the convention
+ * `formatAmount(price, reserveToken.decimals)` used across handlers). The raw
+ * product lives in (D_iss + D_res) decimals — normalise to 18 so totals
+ * across markets with different reserve currencies share a common scale.
+ */
+export function computeReserveValueAt18(
+  supplyRaw: bigint,
+  priceRaw: bigint,
+  issuanceDecimals: number,
+  reserveDecimals: number
+): bigint {
+  return normalizeAmount(supplyRaw * priceRaw, issuanceDecimals + reserveDecimals, 18)
+}
+
 export function normalizeAddress(address: string): string {
   if (!address || !address.startsWith('0x')) {
     return address
