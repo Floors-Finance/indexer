@@ -6,6 +6,7 @@ import { formatAmount, normalizeAddress } from './misc'
 import { getOrCreateToken } from './token'
 import {
   buildUpdatedUserMarketPosition,
+  commitUserMarketPosition,
   getOrCreateAccount,
   getOrCreateUserMarketPosition,
 } from './user'
@@ -179,7 +180,7 @@ export async function handleParticipation(
     reserveTokenDecimals: purchaseToken?.decimals ?? 18,
     timestamp,
   })
-  context.UserMarketPosition.set(updatedPosition)
+  commitUserMarketPosition(context, updatedPosition)
 
   context.log.info(
     `${PRESALE_LOG_PREFIX} ${handlerName} recorded | presale=${presale.id} | user=${account.id} | deposit=${depositAmount.formatted}`

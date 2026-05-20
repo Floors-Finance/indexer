@@ -13,6 +13,7 @@ import type { StakePositionStatus_t, StakingActivityType_t } from '../generated/
 import { StakingManager } from '../generated/src/Handlers.gen'
 import {
   buildUpdatedUserMarketPosition,
+  commitUserMarketPosition,
   formatAmount,
   getOrCreateAccount,
   getOrCreateModuleRegistry,
@@ -324,7 +325,7 @@ StakingManager.Staked.handler(
       ).formatted,
       lastUpdatedAt: timestamp,
     }
-    context.UserMarketPosition.set(updatedUserPosition)
+    commitUserMarketPosition(context, updatedUserPosition)
 
     context.log.info(
       `[StakingManager.Staked] ✅ Position updated | positionId=${positionId} | issuance=${issuanceAmount.formatted} | collateral=${collateralAmount.formatted}`
@@ -444,7 +445,7 @@ StakingManager.YieldHarvested.handler(
       reserveTokenDecimals: reserveToken.decimals,
       timestamp,
     })
-    context.UserMarketPosition.set(updatedUserPosition)
+    commitUserMarketPosition(context, updatedUserPosition)
 
     context.log.info(
       `[StakingManager.YieldHarvested] ✅ Yield harvested | positionId=${positionId} | yield=${yieldAmount.formatted} | fee=${feeAmount.formatted}`
@@ -579,7 +580,7 @@ StakingManager.FundsWithdrawn.handler(
       ).formatted,
       lastUpdatedAt: timestamp,
     }
-    context.UserMarketPosition.set(updatedUserPosition)
+    commitUserMarketPosition(context, updatedUserPosition)
 
     context.log.info(
       `[StakingManager.FundsWithdrawn] ✅ Funds withdrawn | positionId=${positionId} | issuance=${issuanceReturned.formatted} | collateral=${collateralWithdrawn.formatted}`

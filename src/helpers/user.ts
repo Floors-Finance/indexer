@@ -1,7 +1,12 @@
 import type { handlerContext } from 'generated'
-import type { Account_t, UserMarketPosition_t } from 'generated/src/db/Entities.gen'
+import type {
+  Account_t,
+  UserMarketPosition_t,
+  UserMarketPositionSnapshot_t,
+} from 'generated/src/db/Entities.gen'
 
 import { formatAmount, normalizeAddress } from './misc'
+import { getSnapshotBucket } from './time'
 
 /**
  * Get or create Account entity
@@ -158,4 +163,45 @@ export function buildUpdatedUserMarketPosition(
     presaleLeverage,
     lastUpdatedAt: updates.timestamp,
   }
+}
+
+/**
+ * Persist a UserMarketPosition AND append a time-bucketed holdings snapshot.
+ *
+ * Use this in place of a bare `context.UserMarketPosition.set(...)` everywhere
+ * a position is mutated (trade / credit / staking / presale handlers). The
+ * snapshot is what gives the portfolio chart a real history: holdings only
+ * change on the user's own events, so this is event-sparse and O(1) per write.
+ *
+ * The snapshot is keyed by `${user}-${market}-${bucket}` and upserted, so many
+ * events in one hour collapse to a single row and replays stay idempotent
+ * (every stored field is absolute cumulative state, not a delta).
+ *
+ * Portfolio *value* is intentionally not stored here — it is reconstructed at
+ * query time by joining these holdings against MarketSnapshot price history.
+ */
+export function commitUserMarketPosition(
+  context: handlerContext,
+  position: UserMarketPosition_t
+): void {
+  context.UserMarketPosition.set(position)
+
+  const bucket = getSnapshotBucket(position.lastUpdatedAt)
+  const snapshot: UserMarketPositionSnapshot_t = {
+    id: `${position.user_id}-${position.market_id}-${bucket}`,
+    user_id: position.user_id,
+    market_id: position.market_id,
+    timestamp: bucket,
+    netFTokenChangeRaw: position.netFTokenChangeRaw,
+    netFTokenChangeFormatted: position.netFTokenChangeFormatted,
+    stakedAmountRaw: position.stakedAmountRaw,
+    stakedAmountFormatted: position.stakedAmountFormatted,
+    lockedCollateralRaw: position.lockedCollateralRaw,
+    lockedCollateralFormatted: position.lockedCollateralFormatted,
+    totalDebtRaw: position.totalDebtRaw,
+    totalDebtFormatted: position.totalDebtFormatted,
+    presaleDepositRaw: position.presaleDepositRaw,
+    presaleDepositFormatted: position.presaleDepositFormatted,
+  }
+  context.UserMarketPositionSnapshot.set(snapshot)
 }

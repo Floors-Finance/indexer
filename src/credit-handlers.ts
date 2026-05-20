@@ -9,6 +9,7 @@ import {
   applyFacilityDeltas,
   applyGlobalDebtDelta,
   buildUpdatedUserMarketPosition,
+  commitUserMarketPosition,
   formatAmount,
   getOrCreateAccount,
   getOrCreateUserMarketPosition,
@@ -106,7 +107,7 @@ CreditFacility.LoanCreated.handler(
       reserveTokenDecimals: borrowToken.decimals,
       timestamp,
     })
-    context.UserMarketPosition.set(updatedPosition)
+    commitUserMarketPosition(context, updatedPosition)
 
     recordLoanStatusHistory(context, {
       loanId,
@@ -203,7 +204,7 @@ CreditFacility.LoanRebalanced.handler(
       reserveTokenDecimals: borrowToken.decimals,
       timestamp,
     })
-    context.UserMarketPosition.set(updatedPosition)
+    commitUserMarketPosition(context, updatedPosition)
 
     recordLoanStatusHistory(context, {
       loanId,
@@ -303,7 +304,7 @@ CreditFacility.LoanRepaid.handler(
       reserveTokenDecimals: borrowToken.decimals,
       timestamp,
     })
-    context.UserMarketPosition.set(updatedPosition)
+    commitUserMarketPosition(context, updatedPosition)
 
     recordLoanStatusHistory(context, {
       loanId,
@@ -393,7 +394,7 @@ CreditFacility.LoanClosed.handler(
       reserveTokenDecimals: borrowToken.decimals,
       timestamp,
     })
-    context.UserMarketPosition.set(updatedPosition)
+    commitUserMarketPosition(context, updatedPosition)
 
     recordLoanStatusHistory(context, {
       loanId,
@@ -491,7 +492,7 @@ CreditFacility.LoanTransferred.handler(
       reserveTokenDecimals: borrowToken.decimals,
       timestamp,
     })
-    context.UserMarketPosition.set(updatedOldPosition)
+    commitUserMarketPosition(context, updatedOldPosition)
 
     // Increment new borrower's position
     const newPosition = await getOrCreateUserMarketPosition(
@@ -508,7 +509,7 @@ CreditFacility.LoanTransferred.handler(
       reserveTokenDecimals: borrowToken.decimals,
       timestamp,
     })
-    context.UserMarketPosition.set(updatedNewPosition)
+    commitUserMarketPosition(context, updatedNewPosition)
 
     // Update loan ownership
     const updatedLoan = {

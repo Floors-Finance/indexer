@@ -6,6 +6,8 @@ import type { CandlePeriod_t, TradeType_t } from '../generated/src/db/Enums.gen'
 import { FloorMarket } from '../generated/src/Handlers.gen'
 import {
   buildUpdatedUserMarketPosition,
+  commitUserMarketPosition,
+  computeReserveValueAt18,
   createMarketSnapshot,
   formatAmount,
   getMarketIdForModule,
@@ -13,6 +15,7 @@ import {
   getOrCreateMarket,
   getOrCreateToken,
   getOrCreateUserMarketPosition,
+  getSnapshotBucket,
   GLOBAL_STATS_ID,
   handlerErrorWrapper,
   normalizeAddress,
@@ -24,7 +27,6 @@ import {
 
 const CANDLE_PERIODS: CandlePeriod_t[] = ['ONE_HOUR', 'FOUR_HOURS', 'ONE_DAY']
 const ROLLING_WINDOW_SECONDS = 24n * 60n * 60n
-const SNAPSHOT_PERIOD_SECONDS = 3600n
 
 type RollingEntry = {
   timestamp: bigint
@@ -213,7 +215,7 @@ FloorMarket.TokensBought.handler(
       reserveTokenDecimals: reserveToken.decimals,
       timestamp: BigInt(event.block.timestamp),
     })
-    context.UserMarketPosition.set(updatedPosition)
+    commitUserMarketPosition(context, updatedPosition)
     context.log.info(
       `[TokensBought] UserPosition updated | netFToken=${updatedPosition.netFTokenChangeFormatted}`
     )
@@ -232,6 +234,7 @@ FloorMarket.TokensBought.handler(
       tradeTimestamp: BigInt(event.block.timestamp),
       reserveVolumeRaw: event.params.depositAmount_,
       priceRaw: buyPriceRaw,
+      preTradePriceRaw: priceHistory.currentPriceRaw,
     })
 
     context.log.info(`[TokensBought] ✅ Handler completed successfully`)
@@ -394,7 +397,7 @@ FloorMarket.TokensSold.handler(
       reserveTokenDecimals: reserveToken.decimals,
       timestamp: BigInt(event.block.timestamp),
     })
-    context.UserMarketPosition.set(updatedPosition)
+    commitUserMarketPosition(context, updatedPosition)
     context.log.info(
       `[TokensSold] UserPosition updated | netFToken=${updatedPosition.netFTokenChangeFormatted}`
     )
@@ -413,6 +416,7 @@ FloorMarket.TokensSold.handler(
       tradeTimestamp: BigInt(event.block.timestamp),
       reserveVolumeRaw: event.params.receivedAmount_,
       priceRaw: sellPriceRaw,
+      preTradePriceRaw: priceHistory.currentPriceRaw,
     })
 
     context.log.info(`[TokensSold] ✅ Handler completed successfully`)
@@ -1177,8 +1181,17 @@ async function updateDerivedMetricsAfterTrade(params: {
   tradeTimestamp: bigint
   reserveVolumeRaw: bigint
   priceRaw: bigint
+  preTradePriceRaw: bigint
 }): Promise<void> {
-  const { context, market, reserveToken, tradeTimestamp, reserveVolumeRaw, priceRaw } = params
+  const {
+    context,
+    market,
+    reserveToken,
+    tradeTimestamp,
+    reserveVolumeRaw,
+    priceRaw,
+    preTradePriceRaw,
+  } = params
 
   for (const period of CANDLE_PERIODS) {
     await updatePriceCandles(
@@ -1187,6 +1200,8 @@ async function updateDerivedMetricsAfterTrade(params: {
       {
         newPriceRaw: priceRaw,
         newPriceFormatted: formatAmount(priceRaw, reserveToken.decimals).formatted,
+        preTradePriceRaw,
+        preTradePriceFormatted: formatAmount(preTradePriceRaw, reserveToken.decimals).formatted,
         reserveAmountRaw: reserveVolumeRaw,
         reserveAmountFormatted: formatAmount(reserveVolumeRaw, reserveToken.decimals).formatted,
         timestamp: tradeTimestamp,
@@ -1212,7 +1227,7 @@ async function updateDerivedMetricsAfterTrade(params: {
     tradeTimestamp
   )
 
-  const snapshotTimestamp = getSnapshotTimestamp(tradeTimestamp)
+  const snapshotTimestamp = getSnapshotBucket(tradeTimestamp)
   await createMarketSnapshot(
     context,
     market.id,
@@ -1273,13 +1288,6 @@ function updateRollingWindowState(
   return existing
 }
 
-function getSnapshotTimestamp(timestamp: bigint): bigint {
-  if (timestamp < SNAPSHOT_PERIOD_SECONDS) {
-    return 0n
-  }
-  return (timestamp / SNAPSHOT_PERIOD_SECONDS) * SNAPSHOT_PERIOD_SECONDS
-}
-
 async function persistMarketRollingStatsEntity(
   context: Parameters<typeof updatePriceCandles>[0],
   marketId: string,
@@ -1317,22 +1325,42 @@ async function updateGlobalStatsEntity(
     totalVolumeRaw18 += normalizeAmount(state.totalVolumeRaw, state.reserveTokenDecimals, 18)
   })
 
-  // Calculate TVL and Market Cap across all seen markets
-  // TVL = sum(totalSupply * currentPrice), MarketCap = sum(marketSupply * currentPrice)
+  // Calculate TVL and Market Cap across all seen markets.
+  //
+  // supplyRaw is in issuance-token decimals; currentPriceRaw is in
+  // reserve-token decimals (matches the `formatAmount(price, reserveToken.decimals)`
+  // convention used everywhere else in the indexer). The product is therefore
+  // in (D_iss + D_res) decimals — `/1e18` happens to work only when those
+  // sum to 36 (e.g. 18-decimal issuance + 18-decimal reserve). For markets
+  // with USDC (6 decimals) as the reserve, the old math was wrong by 1e12.
+  //
+  // Normalise each market's contribution to 18 decimals before summing,
+  // mirroring `totalVolumeRaw18` above. Aggregating across markets with
+  // different reserve currencies is still semantically questionable without
+  // a USD price oracle, but at least the decimal scale is now consistent.
   let totalValueLockedRaw = 0n
   let totalMarketCapRaw = 0n
 
   for (const marketId of marketsSeen) {
     const market = await context.Market.get(marketId)
-    if (market && market.currentPriceRaw > 0n) {
-      // TVL = totalSupply * currentPrice / 1e18 (assuming 18 decimals for price)
-      // We store the raw multiplication result, formatting handles decimals
-      const marketTVL = (market.totalSupplyRaw * market.currentPriceRaw) / BigInt(1e18)
-      const marketCap = (market.marketSupplyRaw * market.currentPriceRaw) / BigInt(1e18)
+    if (!market || market.currentPriceRaw <= 0n) continue
 
-      totalValueLockedRaw += marketTVL
-      totalMarketCapRaw += marketCap
-    }
+    const reserveToken = await context.Token.get(market.reserveToken_id)
+    const issuanceToken = await context.Token.get(market.issuanceToken_id)
+    if (!reserveToken || !issuanceToken) continue
+
+    totalValueLockedRaw += computeReserveValueAt18(
+      market.totalSupplyRaw,
+      market.currentPriceRaw,
+      issuanceToken.decimals,
+      reserveToken.decimals
+    )
+    totalMarketCapRaw += computeReserveValueAt18(
+      market.marketSupplyRaw,
+      market.currentPriceRaw,
+      issuanceToken.decimals,
+      reserveToken.decimals
+    )
   }
 
   const volumeFormatted = formatAmount(totalVolumeRaw18, 18)

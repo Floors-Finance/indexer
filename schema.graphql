@@ -98,6 +98,7 @@ type Account {
   stakingPositions: [StakePosition!]! @derivedFrom(field: "user_id")
   presaleParticipations: [PresaleParticipation!]! @derivedFrom(field: "user_id")
   userMarketPositions: [UserMarketPosition!]! @derivedFrom(field: "user_id")
+  positionSnapshots: [UserMarketPositionSnapshot!]! @derivedFrom(field: "user_id")
 }
 
 type UserMarketPosition {
@@ -562,6 +563,33 @@ type MarketSnapshot {
   volume24hRaw: BigInt!
   volume24hFormatted: String!
   trades24h: BigInt!
+}
+
+# Time-bucketed copy of a user's holdings in one market.
+# Written on every event that mutates UserMarketPosition (trade / credit /
+# staking / presale). Holdings change only on the user's own events, so this
+# is event-sparse and O(1) per write. Portfolio *value* is not stored here:
+# it is reconstructed at query time by joining these holdings against the
+# per-market price history in MarketSnapshot (which already exists).
+# Immutable per bucket — last write within a bucket wins (same upsert rule
+# as MarketSnapshot / GlobalStatsSnapshot), which keeps replays idempotent
+# because every field below is absolute cumulative state, not a delta.
+type UserMarketPositionSnapshot {
+  id: ID! # `${user_id}-${market_id}-${timestamp}`
+  user_id: ID!
+  market_id: ID!
+  timestamp: BigInt! # bucket-floored, aligns with MarketSnapshot.timestamp
+
+  netFTokenChangeRaw: BigInt!
+  netFTokenChangeFormatted: String!
+  stakedAmountRaw: BigInt!
+  stakedAmountFormatted: String!
+  lockedCollateralRaw: BigInt!
+  lockedCollateralFormatted: String!
+  totalDebtRaw: BigInt!
+  totalDebtFormatted: String!
+  presaleDepositRaw: BigInt!
+  presaleDepositFormatted: String!
 }
 
 type PriceCandle {

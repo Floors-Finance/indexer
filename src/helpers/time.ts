@@ -7,6 +7,24 @@ import { formatAmount, normalizeAmount } from './misc'
 const GLOBAL_STATS_ID = 'global'
 
 /**
+ * Bucket size for point-in-time snapshots (MarketSnapshot, UserMarketPositionSnapshot).
+ * Hourly — all snapshot entities floor their timestamp to this so they share a
+ * common time axis and can be joined cleanly when charting.
+ */
+export const SNAPSHOT_BUCKET_SECONDS = 3600n
+
+/**
+ * Floor a block timestamp to its snapshot bucket.
+ * Returns 0n for timestamps inside the first bucket (mirrors legacy behaviour).
+ */
+export function getSnapshotBucket(timestamp: bigint): bigint {
+  if (timestamp < SNAPSHOT_BUCKET_SECONDS) {
+    return 0n
+  }
+  return (timestamp / SNAPSHOT_BUCKET_SECONDS) * SNAPSHOT_BUCKET_SECONDS
+}
+
+/**
  * Snapshot period configurations for GlobalStatsSnapshot
  */
 const SNAPSHOT_PERIOD_SECONDS: Record<SnapshotPeriod_t, bigint> = {
@@ -126,7 +144,14 @@ export async function updateGlobalStatsSnapshots(
 
 /**
  * Update PriceCandle for charting data
- * Aggregates trades into OHLCV candles
+ * Aggregates trades into OHLCV candles.
+ *
+ * `preTradePriceRaw` is the market price *before* this trade applied — i.e.
+ * the previous candle's close. Using it as `open` makes adjacent candles
+ * continuous on the chart (no synthetic vertical jump at bucket boundaries).
+ * Pass 0n only when no previous price is known (very first trade ever on a
+ * market that initialised with `currentPriceRaw=0`); in that case we fall
+ * back to the post-trade price to preserve old behaviour.
  */
 export async function updatePriceCandles(
   context: handlerContext,
@@ -134,6 +159,8 @@ export async function updatePriceCandles(
   trade: {
     newPriceRaw: bigint
     newPriceFormatted: string
+    preTradePriceRaw: bigint
+    preTradePriceFormatted: string
     reserveAmountRaw: bigint
     reserveAmountFormatted: string
     timestamp: bigint
@@ -155,18 +182,32 @@ export async function updatePriceCandles(
   let candle = await context.PriceCandle.get(candleId)
 
   if (!candle) {
-    // New candle - initialize with trade data
+    // Pre-trade price is the previous candle's close. Falling back to the
+    // post-trade price covers the cold-start case where no prior price exists.
+    const hasPreTradePrice = trade.preTradePriceRaw > 0n
+    const openRaw = hasPreTradePrice ? trade.preTradePriceRaw : trade.newPriceRaw
+    const openFormatted = hasPreTradePrice
+      ? trade.preTradePriceFormatted
+      : trade.newPriceFormatted
+
+    // Both pre- and post-trade prices belong to this bucket's range.
+    const highRaw = openRaw > trade.newPriceRaw ? openRaw : trade.newPriceRaw
+    const lowRaw = openRaw < trade.newPriceRaw ? openRaw : trade.newPriceRaw
+    const highFormatted =
+      highRaw === openRaw ? openFormatted : trade.newPriceFormatted
+    const lowFormatted = lowRaw === openRaw ? openFormatted : trade.newPriceFormatted
+
     candle = {
       id: candleId,
       market_id: marketId,
       period,
       timestamp: candleTimestamp,
-      openRaw: trade.newPriceRaw,
-      openFormatted: trade.newPriceFormatted,
-      highRaw: trade.newPriceRaw,
-      highFormatted: trade.newPriceFormatted,
-      lowRaw: trade.newPriceRaw,
-      lowFormatted: trade.newPriceFormatted,
+      openRaw,
+      openFormatted,
+      highRaw,
+      highFormatted,
+      lowRaw,
+      lowFormatted,
       closeRaw: trade.newPriceRaw,
       closeFormatted: trade.newPriceFormatted,
       volumeRaw: trade.reserveAmountRaw,
@@ -174,7 +215,9 @@ export async function updatePriceCandles(
       trades: 1n,
     }
   } else {
-    // Update existing candle
+    // Update existing candle. Pre-trade price for this trade equals the
+    // existing candle.closeRaw, which is already inside the [low, high] range,
+    // so it doesn't need to be folded in again.
     const newHigh = trade.newPriceRaw > candle.highRaw
     const newLow = trade.newPriceRaw < candle.lowRaw
     const newVolume = formatAmount(candle.volumeRaw + trade.reserveAmountRaw, tokenDecimals)
