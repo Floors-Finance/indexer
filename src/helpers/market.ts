@@ -1,5 +1,5 @@
 import type { handlerContext } from 'generated'
-import type { Market_t } from 'generated/src/db/Entities.gen'
+import type { Market_t, Token_t } from 'generated/src/db/Entities.gen'
 import type { MarketStatus_t } from 'generated/src/db/Enums.gen'
 
 import { formatAmount, normalizeAddress } from './misc'
@@ -80,8 +80,9 @@ export async function getOrCreateMarket(
   }
 
   // Get or create tokens
-  let reserveToken
-  let issuanceToken
+  type TokenOrPlaceholder = Token_t | { id: string; name: string; symbol: string; decimals: number }
+  let reserveToken: TokenOrPlaceholder
+  let issuanceToken: TokenOrPlaceholder
 
   if (finalReserveTokenId) {
     reserveToken = await getOrCreateToken(context, chainId, finalReserveTokenId)
