@@ -229,8 +229,8 @@ export function decodePresaleConfig(encoded: string): DecodedPresaleConfig | nul
     const commissionValues = (commissionBps as readonly (number | bigint)[]).map((bps) =>
       BigInt(bps)
     )
-    const priceBreakpointsValues = (priceBreakpoints as readonly (number | bigint)[]).map(
-      (value) => BigInt(value)
+    const priceBreakpointsValues = (priceBreakpoints as readonly (number | bigint)[]).map((value) =>
+      BigInt(value)
     )
 
     // commissionBps includes the direct (non-leveraged) entry at index 0,

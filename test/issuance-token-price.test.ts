@@ -12,9 +12,9 @@ import assert from 'assert'
 // ── helpers ────────────────────────────────────────────────────────────────
 
 import {
-  normalizeAddress,
-  formatAmount,
   FLOOR_PRICE_DECIMALS,
+  formatAmount,
+  normalizeAddress,
   parseFloorPricingResult,
 } from '../src/helpers/misc'
 import { issuanceTokenToMarketId } from '../src/issuance-token-registry'
@@ -165,7 +165,13 @@ function buildContext(opts: {
  */
 async function runTransferHandler(
   context: ReturnType<typeof buildContext>,
-  params: { issuanceTokenAddress: string; from: string; to: string; chainId: number; timestamp: bigint }
+  params: {
+    issuanceTokenAddress: string
+    from: string
+    to: string
+    chainId: number
+    timestamp: bigint
+  }
 ): Promise<void> {
   const { issuanceTokenAddress, chainId, timestamp } = params
 
@@ -186,7 +192,9 @@ async function runTransferHandler(
 
   if (!pricingResult) return
 
-  const parsed = parseFloorPricingResult(pricingResult as Parameters<typeof parseFloorPricingResult>[0])
+  const parsed = parseFloorPricingResult(
+    pricingResult as Parameters<typeof parseFloorPricingResult>[0]
+  )
 
   const buyPriceRaw = parsed.buyPrice ?? market.currentPriceRaw
   const floorPriceRaw = parsed.floorPrice ?? market.floorPriceRaw
@@ -431,11 +439,11 @@ describe('issuance token Transfer → price refresh', () => {
         market: { ...baseMarket },
         registry: moduleRegistry,
         effectImpl: async () => ({
-          buyPrice: null,     // no buy price returned
+          buyPrice: null, // no buy price returned
           sellPrice: null,
           buyFeeBps: null,
           sellFeeBps: null,
-          floorPrice: null,  // no floor price returned
+          floorPrice: null, // no floor price returned
         }),
       })
 

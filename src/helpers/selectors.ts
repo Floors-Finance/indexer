@@ -69,6 +69,7 @@ const SELECTOR_MAP: Record<string, string> = loadAllAbis()
 export function getSelectorName(selector: string): string {
   const normalizedSelector = selector.toLowerCase()
   // Extract 4-byte selector if 32-byte padded value is provided
-  const selector4Byte = normalizedSelector.length > 10 ? normalizedSelector.slice(0, 10) : normalizedSelector
+  const selector4Byte =
+    normalizedSelector.length > 10 ? normalizedSelector.slice(0, 10) : normalizedSelector
   return SELECTOR_MAP[selector4Byte] || selector
 }

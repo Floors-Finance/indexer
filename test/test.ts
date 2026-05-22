@@ -150,7 +150,7 @@ describe('Floor Markets Indexer', () => {
     describe('ModuleCreated Handler', () => {
       it('creates Market when BC module is created', async () => {
         // First bootstrap with factory to register ModuleFactory
-        let db = await bootstrapWithFactory()
+        const db = await bootstrapWithFactory()
 
         const moduleCreatedEvent = ModuleFactory.ModuleCreated.createMockEvent({
           floor_: MARKET_ADDRESS,
@@ -258,7 +258,7 @@ describe('Floor Markets Indexer', () => {
       })
 
       it('creates AuthorizerContract with default roles when authorizer module is created', async () => {
-        let mockDb = MockDb.createMockDb()
+        const mockDb = MockDb.createMockDb()
 
         const authorizerEvent = ModuleFactory.ModuleCreated.createMockEvent({
           floor_: MARKET_ADDRESS,
@@ -1529,7 +1529,7 @@ describe('Floor Markets Indexer', () => {
 
   describe('Authorizer Handlers', () => {
     async function bootstrapAuthorizerDb() {
-      let db = MockDb.createMockDb()
+      const db = MockDb.createMockDb()
 
       const authorizerEvent = ModuleFactory.ModuleCreated.createMockEvent({
         floor_: MARKET_ADDRESS,
@@ -3343,8 +3343,16 @@ describe('Floor Markets Indexer', () => {
 
         const treasury = db.entities.FloorRaiseTreasury.get(FLOOR_RAISE_TREASURY_CHECKSUM)
         assert.ok(treasury, 'FloorRaiseTreasury entity should be created')
-        assert.equal(treasury?.market_id, MARKET_ADDRESS_CHECKSUM, 'market_id should resolve via ModuleAddress mapping')
-        assert.equal(treasury?.thresholdRaw, newThresholdRaw, 'thresholdRaw should match event param')
+        assert.equal(
+          treasury?.market_id,
+          MARKET_ADDRESS_CHECKSUM,
+          'market_id should resolve via ModuleAddress mapping'
+        )
+        assert.equal(
+          treasury?.thresholdRaw,
+          newThresholdRaw,
+          'thresholdRaw should match event param'
+        )
         assert.equal(
           treasury?.thresholdFormatted,
           '1000',
@@ -3390,7 +3398,11 @@ describe('Floor Markets Indexer', () => {
         const treasury = db.entities.FloorRaiseTreasury.get(FLOOR_RAISE_TREASURY_CHECKSUM)
         assert.equal(treasury?.accumulatedRaw, 0n, 'accumulatedRaw should reset on success')
         assert.equal(treasury?.totalRaisedCount, 1n, 'totalRaisedCount should increment')
-        assert.equal(treasury?.lastRaiseAttemptSuccess, true, 'lastRaiseAttemptSuccess should be true')
+        assert.equal(
+          treasury?.lastRaiseAttemptSuccess,
+          true,
+          'lastRaiseAttemptSuccess should be true'
+        )
 
         const attempt = db.entities.FloorRaiseAttempt.get('0xraise-ok-0')
         assert.ok(attempt, 'FloorRaiseAttempt entity should be created')
@@ -3432,9 +3444,21 @@ describe('Floor Markets Indexer', () => {
         db = await db.processEvents([event])
 
         const treasury = db.entities.FloorRaiseTreasury.get(FLOOR_RAISE_TREASURY_CHECKSUM)
-        assert.equal(treasury?.accumulatedRaw, 800_000_000n, 'accumulatedRaw should be unchanged on failure')
-        assert.equal(treasury?.totalRaisedCount, 0n, 'totalRaisedCount should not increment on failure')
-        assert.equal(treasury?.lastRaiseAttemptSuccess, false, 'lastRaiseAttemptSuccess should be false')
+        assert.equal(
+          treasury?.accumulatedRaw,
+          800_000_000n,
+          'accumulatedRaw should be unchanged on failure'
+        )
+        assert.equal(
+          treasury?.totalRaisedCount,
+          0n,
+          'totalRaisedCount should not increment on failure'
+        )
+        assert.equal(
+          treasury?.lastRaiseAttemptSuccess,
+          false,
+          'lastRaiseAttemptSuccess should be false'
+        )
       })
     })
 
@@ -3562,12 +3586,27 @@ describe('Floor Markets Indexer', () => {
         db = await db.processEvents([event])
 
         const frt = db.entities.FloorRaiseTreasury.get(FLOOR_RAISE_TREASURY_CHECKSUM)
-        assert.equal(frt?.accumulatedRaw, 300_000_000n, 'accumulatedRaw should add the payment amount')
-        assert.equal(frt?.accumulatedFormatted, '300', 'accumulatedFormatted should reflect 300 USDC')
+        assert.equal(
+          frt?.accumulatedRaw,
+          300_000_000n,
+          'accumulatedRaw should add the payment amount'
+        )
+        assert.equal(
+          frt?.accumulatedFormatted,
+          '300',
+          'accumulatedFormatted should reflect 300 USDC'
+        )
 
         const payment = db.entities.FeeSplitterPayment.get('0xfr-pay-0')
-        assert.ok(payment, 'FeeSplitterPayment entity should be created for the floor-raise payment')
-        assert.equal(payment?.isFloorFee, true, 'isFloorFee should be true for floor-raise payments')
+        assert.ok(
+          payment,
+          'FeeSplitterPayment entity should be created for the floor-raise payment'
+        )
+        assert.equal(
+          payment?.isFloorFee,
+          true,
+          'isFloorFee should be true for floor-raise payments'
+        )
       })
     })
 
@@ -3598,7 +3637,9 @@ describe('Floor Markets Indexer', () => {
         assert.ok(cfg, 'FactoryDeploymentConfig should exist for FloorFactory')
         assert.equal(cfg?.kind, 'FLOOR', 'kind should be FLOOR')
 
-        const perm = db.entities.FactoryDeployerPermission.get(`${factoryChecksum}-${DEPLOYER_CHECKSUM}`)
+        const perm = db.entities.FactoryDeployerPermission.get(
+          `${factoryChecksum}-${DEPLOYER_CHECKSUM}`
+        )
         assert.ok(perm, 'FactoryDeployerPermission should exist')
         assert.equal(perm?.factory_id, factoryChecksum, 'factory_id should match')
         assert.equal(perm?.deployer, DEPLOYER_CHECKSUM, 'deployer should match')
@@ -3649,7 +3690,9 @@ describe('Floor Markets Indexer', () => {
         assert.ok(cfg, 'FactoryDeploymentConfig should exist for ModuleFactory')
         assert.equal(cfg?.kind, 'MODULE', 'kind should be MODULE')
 
-        const perm = db.entities.FactoryDeployerPermission.get(`${factoryChecksum}-${DEPLOYER_CHECKSUM}`)
+        const perm = db.entities.FactoryDeployerPermission.get(
+          `${factoryChecksum}-${DEPLOYER_CHECKSUM}`
+        )
         assert.ok(perm, 'FactoryDeployerPermission should exist for ModuleFactory deployer')
         assert.equal(perm?.allowed, true)
       })

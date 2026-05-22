@@ -144,9 +144,7 @@ Presale.PriceBreakpointsSet.handler(
 
     // Post PR #126: priceBreakpoints_ is a flat uint256[] shared across leverage levels.
     const priceBreakpointsFlat: bigint[] = Array.from(event.params.priceBreakpoints_)
-    context.PreSaleContract.set(
-      applyPresalePatch(presale, { priceBreakpointsFlat }, timestamp)
-    )
+    context.PreSaleContract.set(applyPresalePatch(presale, { priceBreakpointsFlat }, timestamp))
   })
 )
 

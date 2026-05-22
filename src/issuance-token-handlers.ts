@@ -78,9 +78,7 @@ ERC20IssuanceToken.Transfer.handler(
     })
 
     if (!pricingResult) {
-      context.log.warn(
-        `[IssuanceToken.Transfer] Price fetch failed | floor=${registry.floor}`
-      )
+      context.log.warn(`[IssuanceToken.Transfer] Price fetch failed | floor=${registry.floor}`)
       return
     }
 

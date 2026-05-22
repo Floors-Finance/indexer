@@ -9,20 +9,20 @@ import {
   commitUserMarketPosition,
   computeReserveValueAt18,
   createMarketSnapshot,
+  fetchReserveBalanceEffect,
   formatAmount,
+  GLOBAL_STATS_ID,
   getMarketIdForModule,
   getOrCreateAccount,
   getOrCreateMarket,
   getOrCreateToken,
   getOrCreateUserMarketPosition,
   getSnapshotBucket,
-  GLOBAL_STATS_ID,
   handlerErrorWrapper,
   normalizeAddress,
   normalizeAmount,
   updateGlobalStatsSnapshots,
   updatePriceCandles,
-  fetchReserveBalanceEffect,
 } from './helpers'
 
 const CANDLE_PERIODS: CandlePeriod_t[] = ['ONE_HOUR', 'FOUR_HOURS', 'ONE_DAY']
@@ -48,6 +48,7 @@ const activeMarkets = new Set<string>()
 const BPS_DENOMINATOR = 10_000n
 
 import { issuanceTokenToMarketId } from './issuance-token-registry'
+
 export { issuanceTokenToMarketId }
 
 type PriceHistoryEntry = {

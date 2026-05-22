@@ -186,15 +186,12 @@ export async function updatePriceCandles(
     // post-trade price covers the cold-start case where no prior price exists.
     const hasPreTradePrice = trade.preTradePriceRaw > 0n
     const openRaw = hasPreTradePrice ? trade.preTradePriceRaw : trade.newPriceRaw
-    const openFormatted = hasPreTradePrice
-      ? trade.preTradePriceFormatted
-      : trade.newPriceFormatted
+    const openFormatted = hasPreTradePrice ? trade.preTradePriceFormatted : trade.newPriceFormatted
 
     // Both pre- and post-trade prices belong to this bucket's range.
     const highRaw = openRaw > trade.newPriceRaw ? openRaw : trade.newPriceRaw
     const lowRaw = openRaw < trade.newPriceRaw ? openRaw : trade.newPriceRaw
-    const highFormatted =
-      highRaw === openRaw ? openFormatted : trade.newPriceFormatted
+    const highFormatted = highRaw === openRaw ? openFormatted : trade.newPriceFormatted
     const lowFormatted = lowRaw === openRaw ? openFormatted : trade.newPriceFormatted
 
     candle = {

@@ -6,8 +6,8 @@
  * creates the entity on first sight if it does not exist yet.
  */
 
-import { FloorRaiseTreasury } from '../generated/src/Handlers.gen'
 import type { FloorRaiseTreasury_t } from '../generated/src/db/Entities.gen'
+import { FloorRaiseTreasury } from '../generated/src/Handlers.gen'
 import {
   formatAmount,
   getMarketIdForModule,
@@ -17,7 +17,9 @@ import {
 } from './helpers'
 
 async function getOrCreateFloorRaiseTreasury(
-  context: Parameters<Parameters<typeof FloorRaiseTreasury.ThresholdUpdated.handler>[0]>[0]['context'],
+  context: Parameters<
+    Parameters<typeof FloorRaiseTreasury.ThresholdUpdated.handler>[0]
+  >[0]['context'],
   params: {
     id: string
     marketId: string

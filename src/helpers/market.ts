@@ -144,7 +144,10 @@ export async function getOrCreateMarket(
     })
     if (floorSection) {
       floorSegmentSupplyRaw = decodeFloorSegmentSupply(floorSection.floorSectionHex)
-      floorSegmentSupplyFormatted = formatAmount(floorSegmentSupplyRaw, issuanceToken.decimals).formatted
+      floorSegmentSupplyFormatted = formatAmount(
+        floorSegmentSupplyRaw,
+        issuanceToken.decimals
+      ).formatted
       context.log.info(
         `[getOrCreateMarket] ✅ Floor segment supply fetched | supply=${floorSegmentSupplyFormatted} | raw=${floorSegmentSupplyRaw}`
       )
