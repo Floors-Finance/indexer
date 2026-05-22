@@ -5,7 +5,9 @@
     "clean": "tsc --clean",
     "build": "tsc --build",
     "watch": "tsc --watch",
-    "lint": "eslint . --ext .ts --fix",
+    "format": "biome format --write .",
+    "lint": "biome lint .",
+    "check": "biome check --write .",
     "mocha": "ts-mocha test/**/*.ts --timeout 15000",
     "codegen": "envio codegen",
     "dev": "(cd generated && pnpm build) && eval \"$(scripts/select_rpc.sh)\" && LOG_LEVEL=trace LOG_STRATEGY=console-pretty TUI_OFF=true envio dev",
@@ -16,6 +18,7 @@
     "db-setup": "cd generated && pnpm db-setup && cd -"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.4.15",
     "@types/chai": "^4.3.20",
     "@types/mocha": "10.0.6",
     "@types/node": "20.8.8",
