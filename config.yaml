@@ -154,7 +154,7 @@ contracts:
 
 networks:
   - id: 31337 # Local Anvil (forked) or Remote Avalanche Fork
-    start_block: ${START_BLOCK:-73900000}
+    start_block: ${START_BLOCK:-86594000}
     rpc_config:
       # Allow overriding the RPC endpoint (e.g. local Anvil) via RPC_URL_31337
       url: '${RPC_URL_31337:-https://vfgvanuabr.eu-central-1.awsapprunner.com/}'
