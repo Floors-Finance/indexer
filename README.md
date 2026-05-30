@@ -108,7 +108,7 @@ Edit `config.yaml` under the `networks` section:
 ```yaml
 networks:
   - id: 31337
-    start_block: 86594000
+    start_block: 86769600
     contracts:
       - name: FloorFactory
         address: '0x...'
